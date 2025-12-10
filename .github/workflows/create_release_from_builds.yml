@@ -102,7 +102,7 @@ jobs:
       - name: Upload Linux AppImage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: recon-linux.AppImage
+          name: recon-linux
           path: recon-linux.AppImage
 
   build_android:
@@ -237,6 +237,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release_artifacts/recon-linux/recon-linux.AppImage
-          asset_name: ReCon-Linux-${{ steps.get_version.outputs.version }}.AppImage
+          asset_path: release_artifacts/recon-linux/recon-linux.AppImage.zip
+          asset_name: ReCon-Linux-${{ steps.get_version.outputs.version }}.AppImage.zip
           asset_content_type: application/x-executable
