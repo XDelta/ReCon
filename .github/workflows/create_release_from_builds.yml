@@ -10,7 +10,6 @@ on:
 jobs:
   build_windows:
     name: Build Windows
-    if: false
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -108,7 +107,6 @@ jobs:
 
   build_android:
     name: Build Android
-    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -180,8 +178,7 @@ jobs:
   release:
     name: Create Release and attach artifacts
     runs-on: ubuntu-latest
-    # [build_windows, build_android, build_linux_appimage]
-    needs: [build_linux_appimage]
+    needs: [build_windows, build_android, build_linux_appimage]
     steps:
       - name: Checkout (for commit metadata if you want)
         uses: actions/checkout@v4
