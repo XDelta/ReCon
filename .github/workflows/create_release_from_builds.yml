@@ -137,13 +137,31 @@ jobs:
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
           
       - name: Create Signing Properties File
+        if: steps.signing_check.outputs.HAS_KEYSTORE == 'true'
         working-directory: android
         run: |
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> key.properties
           echo "storeFile=keystore.jks" >> key.properties
-
+      
+      - name: Create Empty Properties File [No Signing Key]
+        if: steps.signing_check.outputs.HAS_KEYSTORE == 'false'
+        working-directory: android
+        run: |
+          echo "::notice::Disabling release signing."
+          cat << 'EOF' > app/signing_override.gradle
+          android {
+            buildTypes {
+              release {
+                signingConfig null
+              }
+            }
+          }
+          EOF
+          # Apply override to app/build.gradle
+          echo "apply from: 'signing_override.gradle'" >> app/build.gradle
+          
       - name: Build Android APK
         working-directory: android
         run: |
