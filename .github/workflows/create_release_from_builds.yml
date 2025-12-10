@@ -117,8 +117,22 @@ jobs:
           channel: stable
           version: 3.35.7
           cache: true
+          
+      - name: Check for signing keys
+        id: signing_check
+        run: |
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ] || \
+             [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ] || \
+             [ -z "${{ secrets.KEY_PASSWORD }}" ] || \
+             [ -z "${{ secrets.KEY_ALIAS }}" ]; then
+            echo "::warning::Android signing key not provided OR parts missing. Building unsigned APK."
+            echo "HAS_KEYSTORE=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "HAS_KEYSTORE=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Decode Keystore
+        if: steps.signing_check.outputs.HAS_KEYSTORE == 'true'
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
           
