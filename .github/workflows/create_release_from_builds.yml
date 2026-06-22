@@ -185,7 +185,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           # downloads all artifacts into the current workspace (they retain the uploaded file names)
           path: release_artifacts
