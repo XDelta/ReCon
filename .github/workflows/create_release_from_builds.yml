@@ -10,6 +10,7 @@ on:
 jobs:
   build_windows:
     name: Build Windows
+    if: false
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -102,12 +103,13 @@ jobs:
       - name: Upload Linux AppImage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: recon-linux.AppImage
+          name: recon-linux
           path: recon-linux.AppImage
 
   build_android:
     name: Build Android
     runs-on: ubuntu-latest
+    if: false
     steps:
       - uses: actions/checkout@v4
 
@@ -117,19 +119,50 @@ jobs:
           channel: stable
           version: 3.44.2
           cache: true
-
+          
+      - name: Check for signing keys
+        id: signing_check
+        run: |
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ] || \
+             [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ] || \
+             [ -z "${{ secrets.KEY_PASSWORD }}" ] || \
+             [ -z "${{ secrets.KEY_ALIAS }}" ]; then
+            echo "::warning::Android signing key not provided OR parts missing. Building unsigned APK."
+            echo "HAS_KEYSTORE=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "HAS_KEYSTORE=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Decode Keystore
+        if: steps.signing_check.outputs.HAS_KEYSTORE == 'true'
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
           
       - name: Create Signing Properties File
+        if: steps.signing_check.outputs.HAS_KEYSTORE == 'true'
         working-directory: android
         run: |
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> key.properties
           echo "storeFile=keystore.jks" >> key.properties
-
+      
+      - name: Create Empty Properties File [No Signing Key]
+        if: steps.signing_check.outputs.HAS_KEYSTORE == 'false'
+        working-directory: android
+        run: |
+          echo "::notice::Disabling release signing."
+          cat << 'EOF' > app/signing_override.gradle
+          android {
+            buildTypes {
+              release {
+                signingConfig null
+              }
+            }
+          }
+          EOF
+          # Apply override to app/build.gradle
+          echo "apply from: 'signing_override.gradle'" >> app/build.gradle
+          
       - name: Build Android APK
         working-directory: android
         run: |
@@ -146,9 +179,9 @@ jobs:
   release:
     name: Create Release and attach artifacts
     runs-on: ubuntu-latest
-    needs: [build_windows, build_android, build_linux_appimage]
+    needs: [build_linux_appimage]
     steps:
-      - name: Checkout (for commit metadata if you want)
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Download build artifacts
@@ -176,27 +209,27 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload Windows Build to Release
-        id: upload-release-asset-windows
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: release_artifacts/recon-windows/recon-windows.zip
-          asset_name: ReCon-Windows-${{ steps.get_version.outputs.version }}.zip
-          asset_content_type: application/zip
+      # - name: Upload Windows Build to Release
+      #   id: upload-release-asset-windows
+      #   uses: actions/upload-release-asset@v1.0.2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+      #     asset_path: release_artifacts/recon-windows/recon-windows.zip
+      #     asset_name: ReCon-Windows-${{ steps.get_version.outputs.version }}.zip
+      #     asset_content_type: application/zip
       
-      - name: Upload Android APK to Release
-        id: upload-release-asset-android
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release_artifacts/recon-android/recon-android.apk
-          asset_name: ReCon-Android-${{ steps.get_version.outputs.version }}.apk
-          asset_content_type: application/vnd.android.package-archive
+      # - name: Upload Android APK to Release
+      #   id: upload-release-asset-android
+      #   uses: actions/upload-release-asset@v1.0.2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: release_artifacts/recon-android/recon-android.apk
+      #     asset_name: ReCon-Android-${{ steps.get_version.outputs.version }}.apk
+      #     asset_content_type: application/vnd.android.package-archive
 
       - name: Upload Linux AppImage to Release
         id: upload-release-asset-linux
