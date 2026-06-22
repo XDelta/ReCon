@@ -102,51 +102,13 @@ jobs:
       - name: Upload Linux AppImage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: recon-linux.AppImage
+          name: recon-linux
           path: recon-linux.AppImage
-
-  build_android:
-    name: Build Android
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: flutter-actions/setup-flutter@v4
-        with:
-          channel: stable
-          version: 3.44.2
-          cache: true
-
-      - name: Decode Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
-          
-      - name: Create Signing Properties File
-        working-directory: android
-        run: |
-          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> key.properties
-          echo "storeFile=keystore.jks" >> key.properties
-
-      - name: Build Android APK
-        working-directory: android
-        run: |
-            flutter build apk --release
-            cd ../build/app/outputs/flutter-apk
-            mv app-release.apk recon-android.apk
-
-      - name: Upload Android artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: recon-android
-          path: build/app/outputs/flutter-apk/recon-android.apk
 
   release:
     name: Create Release and attach artifacts
     runs-on: ubuntu-latest
-    needs: [build_windows, build_android, build_linux_appimage]
+    needs: [build_windows, build_linux_appimage]
     steps:
       - name: Checkout (for commit metadata if you want)
         uses: actions/checkout@v4
@@ -186,17 +148,6 @@ jobs:
           asset_path: release_artifacts/recon-windows/recon-windows.zip
           asset_name: ReCon-Windows-${{ steps.get_version.outputs.version }}.zip
           asset_content_type: application/zip
-      
-      - name: Upload Android APK to Release
-        id: upload-release-asset-android
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release_artifacts/recon-android/recon-android.apk
-          asset_name: ReCon-Android-${{ steps.get_version.outputs.version }}.apk
-          asset_content_type: application/vnd.android.package-archive
 
       - name: Upload Linux AppImage to Release
         id: upload-release-asset-linux
