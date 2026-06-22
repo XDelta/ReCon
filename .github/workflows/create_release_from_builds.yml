@@ -10,6 +10,7 @@ on:
 jobs:
   build_windows:
     name: Build Windows
+    if: false
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -102,12 +103,13 @@ jobs:
       - name: Upload Linux AppImage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: recon-linux.AppImage
+          name: recon-linux
           path: recon-linux.AppImage
 
   build_android:
     name: Build Android
     runs-on: ubuntu-latest
+    if: false
     steps:
       - uses: actions/checkout@v4
 
